@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react';
 import UserList from './components/UserList';
 import type { User } from './types';
 
+const API_BASE = import.meta.env.VITE_API_BASE_URL ?? '';
+
 function App() {
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
@@ -12,7 +14,7 @@ function App() {
 
     async function load() {
       try {
-        const res = await fetch('/api/users');
+        const res = await fetch(`${API_BASE}/api/users`);
         if (!res.ok) {
           throw new Error(`Request failed with status ${res.status}`);
         }
