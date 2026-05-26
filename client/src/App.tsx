@@ -5,22 +5,28 @@ import { apiFetch, UnauthorizedError } from './api';
 import { clearToken, getToken } from './auth';
 import type { User } from './types';
 
+type CurrentUser = { id: number; name: string; email: string };
+
 function App() {
   const [authed, setAuthed] = useState<boolean>(() => getToken() !== null);
+  const [me, setMe] = useState<CurrentUser | null>(null);
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const loadUsers = useCallback(async () => {
+  const loadData = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      const res = await apiFetch('/api/users');
-      if (!res.ok) {
-        throw new Error(`Request failed with status ${res.status}`);
+      const [meRes, usersRes] = await Promise.all([
+        apiFetch('/api/auth/me'),
+        apiFetch('/api/users'),
+      ]);
+      if (!meRes.ok || !usersRes.ok) {
+        throw new Error(`Request failed (${meRes.status}, ${usersRes.status})`);
       }
-      const data: User[] = await res.json();
-      setUsers(data);
+      setMe(await meRes.json());
+      setUsers(await usersRes.json());
     } catch (err) {
       if (err instanceof UnauthorizedError) {
         setAuthed(false);
@@ -34,13 +40,14 @@ function App() {
 
   useEffect(() => {
     if (authed) {
-      loadUsers();
+      loadData();
     }
-  }, [authed, loadUsers]);
+  }, [authed, loadData]);
 
   function handleLogout() {
     clearToken();
     setAuthed(false);
+    setMe(null);
     setUsers([]);
   }
 
@@ -58,13 +65,20 @@ function App() {
               Loaded from PostgreSQL via the Node API.
             </p>
           </div>
-          <button
-            type="button"
-            onClick={handleLogout}
-            className="rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50"
-          >
-            Sign out
-          </button>
+          <div className="flex items-center gap-3">
+            {me && (
+              <span className="text-sm text-slate-600">
+                Signed in as <span className="font-medium text-slate-900">{me.name}</span>
+              </span>
+            )}
+            <button
+              type="button"
+              onClick={handleLogout}
+              className="rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50"
+            >
+              Sign out
+            </button>
+          </div>
         </header>
 
         {loading && (
