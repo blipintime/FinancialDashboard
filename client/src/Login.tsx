@@ -10,7 +10,6 @@ type Props = {
 
 export default function Login({ onAuthenticated }: Props) {
   const [mode, setMode] = useState<Mode>('login');
-  const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -22,8 +21,10 @@ export default function Login({ onAuthenticated }: Props) {
     setError(null);
     try {
       const path = mode === 'login' ? '/api/auth/login' : '/api/auth/register';
-      const body = mode === 'login' ? { email, password } : { name, email, password };
-      const res = await apiFetch(path, { method: 'POST', body: JSON.stringify(body) });
+      const res = await apiFetch(path, {
+        method: 'POST',
+        body: JSON.stringify({ email, password }),
+      });
       const data = await res.json();
       if (!res.ok) {
         setError(data.error ?? 'Request failed');
@@ -45,22 +46,12 @@ export default function Login({ onAuthenticated }: Props) {
           {mode === 'login' ? 'Sign in' : 'Create account'}
         </h1>
         <p className="mt-1 text-sm text-slate-500">
-          {mode === 'login' ? 'Enter your credentials to view users.' : 'Register a new account.'}
+          {mode === 'login'
+            ? 'Enter your credentials to view users.'
+            : 'Set a password for your pre-approved email.'}
         </p>
 
         <form onSubmit={handleSubmit} className="mt-6 space-y-4">
-          {mode === 'register' && (
-            <label className="block">
-              <span className="text-sm font-medium text-slate-700">Name</span>
-              <input
-                type="text"
-                required
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-slate-500 focus:outline-none"
-              />
-            </label>
-          )}
           <label className="block">
             <span className="text-sm font-medium text-slate-700">Email</span>
             <input

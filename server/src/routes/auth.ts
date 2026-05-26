@@ -12,11 +12,7 @@ function isValidEmail(s: unknown): s is string {
 }
 
 router.post('/register', async (req, res) => {
-  const { name, email, password } = req.body ?? {};
-  if (typeof name !== 'string' || !name.trim()) {
-    res.status(400).json({ error: 'name is required' });
-    return;
-  }
+  const { email, password } = req.body ?? {};
   if (!isValidEmail(email)) {
     res.status(400).json({ error: 'valid email is required' });
     return;
@@ -27,18 +23,23 @@ router.post('/register', async (req, res) => {
   }
 
   try {
-    const hash = await bcrypt.hash(password, BCRYPT_ROUNDS);
     const { rows } = await pool.query(
-      'INSERT INTO users (name, email, password_hash) VALUES ($1, $2, $3) RETURNING id',
-      [name.trim(), email.toLowerCase(), hash]
+      'SELECT id, password_hash FROM users WHERE email = $1',
+      [email.toLowerCase()]
     );
-    const userId: number = rows[0].id;
-    res.status(201).json({ token: signToken(userId) });
-  } catch (err: unknown) {
-    if (typeof err === 'object' && err !== null && 'code' in err && (err as { code: string }).code === '23505') {
-      res.status(409).json({ error: 'email already in use' });
+    const user = rows[0];
+    if (!user) {
+      res.status(403).json({ error: 'this email is not allowed to register' });
       return;
     }
+    if (user.password_hash) {
+      res.status(409).json({ error: 'this account already has a password — please sign in' });
+      return;
+    }
+    const hash = await bcrypt.hash(password, BCRYPT_ROUNDS);
+    await pool.query('UPDATE users SET password_hash = $1 WHERE id = $2', [hash, user.id]);
+    res.json({ token: signToken(user.id) });
+  } catch (err) {
     console.error('POST /api/auth/register failed:', err);
     res.status(500).json({ error: 'registration failed' });
   }
