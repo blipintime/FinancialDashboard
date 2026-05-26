@@ -1,7 +1,10 @@
-import type { User } from '../types';
+import type { Role, User } from '../types';
+import RoleBadges from './RoleBadges';
 
 type Props = {
   users: User[];
+  isAdmin: boolean;
+  onUpdateRoles: (userId: number, roles: Role[]) => void;
 };
 
 function formatDate(iso: string): string {
@@ -13,7 +16,11 @@ function formatDate(iso: string): string {
   });
 }
 
-export default function UserList({ users }: Props) {
+function toggleRole(roles: Role[], role: Role): Role[] {
+  return roles.includes(role) ? roles.filter((r) => r !== role) : [...roles, role];
+}
+
+export default function UserList({ users, isAdmin, onUpdateRoles }: Props) {
   if (users.length === 0) {
     return (
       <div className="rounded-lg border border-slate-200 bg-white p-8 text-center text-slate-500 shadow-sm">
@@ -37,6 +44,9 @@ export default function UserList({ users }: Props) {
               Email
             </th>
             <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">
+              Roles
+            </th>
+            <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">
               Joined
             </th>
           </tr>
@@ -47,6 +57,13 @@ export default function UserList({ users }: Props) {
               <td className="px-6 py-4 text-sm font-mono text-slate-500">{u.id}</td>
               <td className="px-6 py-4 text-sm font-medium text-slate-900">{u.name}</td>
               <td className="px-6 py-4 text-sm text-slate-700">{u.email}</td>
+              <td className="px-6 py-4">
+                <RoleBadges
+                  roles={u.roles}
+                  editable={isAdmin}
+                  onToggle={(role) => onUpdateRoles(u.id, toggleRole(u.roles, role))}
+                />
+              </td>
               <td className="px-6 py-4 text-sm text-slate-500">{formatDate(u.created_at)}</td>
             </tr>
           ))}

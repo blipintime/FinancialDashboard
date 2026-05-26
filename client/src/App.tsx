@@ -3,9 +3,9 @@ import UserList from './components/UserList';
 import Login from './Login';
 import { apiFetch, UnauthorizedError } from './api';
 import { clearToken, getToken } from './auth';
-import type { User } from './types';
+import type { Role, User } from './types';
 
-type CurrentUser = { id: number; name: string; email: string };
+type CurrentUser = { id: number; name: string; email: string; roles: Role[] };
 
 function App() {
   const [authed, setAuthed] = useState<boolean>(() => getToken() !== null);
@@ -51,6 +51,33 @@ function App() {
     setUsers([]);
   }
 
+  const isAdmin = me?.roles.includes('Admin') ?? false;
+
+  async function handleUpdateRoles(userId: number, nextRoles: Role[]) {
+    const snapshot = users;
+    setUsers((prev) => prev.map((u) => (u.id === userId ? { ...u, roles: nextRoles } : u)));
+    setError(null);
+    try {
+      const res = await apiFetch(`/api/users/${userId}/roles`, {
+        method: 'PUT',
+        body: JSON.stringify({ roles: nextRoles }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error ?? `Request failed with status ${res.status}`);
+      }
+      const updated: User = await res.json();
+      setUsers((prev) => prev.map((u) => (u.id === userId ? updated : u)));
+    } catch (err) {
+      if (err instanceof UnauthorizedError) {
+        setAuthed(false);
+        return;
+      }
+      setUsers(snapshot);
+      setError(err instanceof Error ? err.message : 'Failed to update roles');
+    }
+  }
+
   if (!authed) {
     return <Login onAuthenticated={() => setAuthed(true)} />;
   }
@@ -87,14 +114,16 @@ function App() {
           </div>
         )}
 
-        {!loading && error && (
-          <div className="rounded-lg border border-red-200 bg-red-50 p-6 text-sm text-red-700 shadow-sm">
-            <p className="font-medium">Failed to load users.</p>
+        {error && (
+          <div className="mb-4 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700 shadow-sm">
+            <p className="font-medium">Something went wrong.</p>
             <p className="mt-1 text-red-600/80">{error}</p>
           </div>
         )}
 
-        {!loading && !error && <UserList users={users} />}
+        {!loading && (
+          <UserList users={users} isAdmin={isAdmin} onUpdateRoles={handleUpdateRoles} />
+        )}
       </div>
     </div>
   );
