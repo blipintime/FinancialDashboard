@@ -5,6 +5,10 @@ CREATE TABLE IF NOT EXISTS users (
   created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
+-- Added later for JWT auth. Nullable so old seed rows survive;
+-- those rows have no password and cannot log in until updated.
+ALTER TABLE users ADD COLUMN IF NOT EXISTS password_hash TEXT;
+
 INSERT INTO users (name, email) VALUES
   ('Ada Lovelace',      'ada@example.com'),
   ('Alan Turing',       'alan@example.com'),
